@@ -52,9 +52,10 @@ def tile_range(bounds_web, z):
     return x0, y0, x1, y1
 
 
-def finest_level(path, samples=24):
+def finest_level(path, samples=200, min_cover=0.98):
     """Algunos GeoTIFF traen solo las vistas generales (overviews) con datos y la
-    resolución completa vacía. Devuelve el nivel más fino que tenga datos reales."""
+    resolución completa vacía o a medio escribir. Devuelve el nivel más fino con
+    datos en casi toda la huella."""
     with rasterio.open(path) as src:
         n_ovr = len(src.overviews(1))
         if not n_ovr:
@@ -75,7 +76,7 @@ def finest_level(path, samples=24):
             for fx, fy in pts:
                 c, r = int(fx * src.width), int(fy * src.height)
                 hits += int(src.read(1, window=Window(c, r, 1, 1))[0, 0] != 0)
-        if hits >= 0.5 * len(pts):
+        if hits >= min_cover * len(pts):
             return level
     return None
 
@@ -278,6 +279,9 @@ def build_layer_tiles(src_path, out_dir, rel_url, sig, **kw):
     meta_p = Path(out_dir) / "tiles.json"
     params = {"src": [int(v) for v in sig], "version": TILE_VERSION, "zcap": kw.get("zcap"),
               "mask": kw.pop("mask_sig")}
+    level = finest_level(src_path)
+    if level is not None:
+        params["level"] = level
     if meta_p.exists():
         old = json.loads(meta_p.read_text("utf-8"))
         if old.get("params") == params:

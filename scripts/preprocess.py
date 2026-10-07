@@ -270,7 +270,8 @@ def load_cache(flight_id, kind):
 
 
 def remove_canvas(rgba):
-    """Quita el lienzo blanco que rodea algunos ortomosaicos (blanco conectado al exterior)."""
+    """Quita el lienzo blanco que rodea algunos ortomosaicos (blanco conectado al exterior).
+    Solo aplica a fuentes uint8: en las de 16 bits el estiramiento satura las luces a 255."""
     from scipy import ndimage
 
     alpha = rgba[3] > 0
@@ -581,7 +582,9 @@ def phase2(flights, sites, las_meta):
             if kind in RGB_LAYERS:
                 h, w = arr.shape[1:]
                 raw = arr[3] > 0
-                valid = clean_edges(remove_canvas(arr), t)
+                with rasterio.open(path) as src:
+                    native8 = src.dtypes[0] == "uint8"
+                valid = clean_edges(remove_canvas(arr) if native8 else raw, t)
                 arr = arr.copy()
                 arr[:, ~valid] = 0
                 area_ha *= valid.sum() / max(raw.sum(), 1)
