@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explorador dron · Aconcagua Vivo</title>
+
+  <link href="assets/av/img/favicon-32x32.png" rel="icon">
+  <link href="assets/av/img/apple-touch-icon.png" rel="apple-touch-icon">
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Raleway:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link href="assets/css/main.css?v=20261007f" rel="stylesheet">
+  <link href="assets/css/explorador.css?v=20261007f" rel="stylesheet">
+</head>
+
+<body class="explorer-page">
+
+  <header id="header" class="header">
+    <div class="container container-wide">
+      <a href="index.html" class="logo">
+        <img src="assets/av/img/logo Aconcagua 613x613.png" alt="Logo Aconcagua Vivo">
+        <h1 class="sitename">Aconcagua Vivo<small>Explorador dron</small></h1>
+      </a>
+      <nav id="navmenu" class="navmenu">
+        <ul>
+          <li><a href="index.html">Inicio</a></li>
+          <li><a href="https://teleamb.cl/AconcaguaVivo/programa.html">Programa</a></li>
+          <li><a href="https://teleamb.cl/AconcaguaVivo/actividades.html">Actividades</a></li>
+          <li><a href="https://teleamb.cl/AconcaguaVivo/equipo.html">Equipo</a></li>
+          <li><a href="https://teleamb.cl/AconcaguaVivo/cronograma.html">Cronograma</a></li>
+          <li><a href="explorador.html" class="active">Explorador</a></li>
+          <li><a href="https://teleamb.cl/AconcaguaVivo/contacto.html">Contacto</a></li>
+        </ul>
+        <button class="mobile-nav-toggle bi bi-list" type="button" aria-label="Abrir menú"></button>
+      </nav>
+      <button class="btn-tour" id="tourBtn" type="button"><i class="bi bi-signpost-split"></i> Recorrido guiado</button>
+    </div>
+  </header>
+
+  <div class="app" id="app">
+    <div class="map-stage" id="mapStage">
+      <div id="map"></div>
+
+      <div class="las3d" id="las3dView" hidden>
+        <div class="las3d-toolbar" id="las3dToolbar">
+          <div class="seg" role="group" aria-label="Colorear por" id="lasColorModes"></div>
+          <label class="mini-range">Tamaño
+            <input type="range" id="lasPointSize" min="0.5" max="5" step="0.5" value="1.5">
+          </label>
+          <label class="mini-range">Exag. Z
+            <input type="range" id="lasZScale" min="1" max="5" step="0.5" value="1.5">
+          </label>
+          <button type="button" class="icon-btn" id="lasReset" title="Restablecer vista"><i class="bi bi-arrow-counterclockwise"></i></button>
+        </div>
+        <div class="las3d-legend" id="las3dLegend"></div>
+        <div class="las3d-status" id="las3dStatus">Cargando nube de puntos…</div>
+      </div>
+
+      <div class="map-tools" id="mapTools">
+        <div class="seg seg--mini" id="basemapSeg" role="group" aria-label="Mapa base">
+          <button type="button" data-base="topo" class="active" title="Mapa topográfico"><i class="bi bi-map"></i> Topo</button>
+          <button type="button" data-base="sat" title="Mapa satelital"><i class="bi bi-globe-americas"></i> Satélite</button>
+        </div>
+        <button type="button" class="tool-toggle active" id="btnComunas" title="Mostrar u ocultar límites comunales" aria-pressed="true"><i class="bi bi-bounding-box-circles"></i> Comunas</button>
+        <div class="map-note" id="mapNote">Cargando…</div>
+      </div>
+
+      <div class="legend-rail legend-rail--left" id="legendRailLeft">
+        <div class="dock" id="colorbarBox" hidden>
+          <div class="dock-title" id="cbTitle">NDVI</div>
+          <div class="colorbar">
+            <span class="cb-val" id="cbMax"></span>
+            <div class="cb-gradient" id="cbGradient"></div>
+            <span class="cb-val" id="cbMin"></span>
+          </div>
+          <div class="cb-unit" id="cbUnit"></div>
+        </div>
+      </div>
+
+      <div class="legend-rail legend-rail--right" id="legendRailRight">
+        <div class="dock opacity-dock" id="opacityDock" hidden>
+          <div class="dock-title">Transparencia</div>
+          <div class="dock-sub">capa sobre RGB</div>
+          <span class="op-val" id="opacityVal">100%</span>
+          <div class="op-slider"><input type="range" id="opacity" min="0" max="100" value="100" aria-label="Opacidad de la capa"></div>
+          <span class="op-val">0%</span>
+        </div>
+      </div>
+
+      <aside class="panel" id="panel" aria-label="Controles">
+        <div class="panel-head">
+          <p class="kicker">Cuenca del Aconcagua · Región de Valparaíso</p>
+          <h2>Explorador dron</h2>
+          <p class="sub">Elige un sector, el tipo de vuelo y una capa. Haz clic en el mapa para consultar valores.</p>
+          <button type="button" class="panel-collapse" id="panelCollapse" aria-label="Contraer panel"><i class="bi bi-chevron-left"></i></button>
+        </div>
+
+        <div class="panel-body">
+          <div class="alert" id="loadHint" hidden></div>
+
+          <section class="block" id="blockFlights">
+            <span class="block-title"><i class="bi bi-airplane"></i> Vuelo</span>
+            <div class="flight-list" id="flightList"></div>
+          </section>
+
+          <section class="block" id="blockMission">
+            <span class="block-title"><i class="bi bi-camera"></i> Tipo de vuelo</span>
+            <div class="seg seg--full seg--mission" id="missionSeg" role="group" aria-label="Tipo de vuelo"></div>
+          </section>
+
+          <section class="block" id="blockLayers">
+            <span class="block-title"><i class="bi bi-layers"></i> Capa</span>
+            <div id="layerGroups"></div>
+            <div class="index-desc" aria-live="polite">
+              <span class="index-desc__label" id="layerDescLabel">Capa</span>
+              <p class="index-desc__text" id="layerDescText">Selecciona una capa para ver su descripción.</p>
+            </div>
+          </section>
+
+          <section class="block" id="blockStats" hidden>
+            <span class="block-title"><i class="bi bi-bar-chart"></i> Estadísticas del vuelo</span>
+            <div class="stats-grid" id="statsGrid"></div>
+          </section>
+        </div>
+      </aside>
+
+      <div class="chart-dock" id="chartDock">
+        <button type="button" class="chart-dock__toggle" id="chartToggle"><i class="bi bi-graph-up"></i> <span>Gráficos</span> <i class="bi bi-chevron-up chev"></i></button>
+        <div class="chart-dock__body">
+          <div class="chart-dock__head">
+            <label class="field field--inline">Variable<select id="chartLayer"></select></label>
+            <span class="chart-sub" id="chartSub"></span>
+          </div>
+          <div class="chart-grid">
+            <div class="chart-card">
+              <h4>Distribución de valores</h4>
+              <div class="chart-box"><canvas id="histChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h4>Comparación entre vuelos</h4>
+              <div class="chart-box"><canvas id="flightsChart"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tour" id="tour" hidden>
+    <div class="tour-spot" id="tourSpot"></div>
+    <div class="tour-card" id="tourCard" role="dialog" aria-live="polite">
+      <div class="tour-progress" id="tourProgress"></div>
+      <h4 id="tourTitle"></h4>
+      <p id="tourText"></p>
+      <div class="tour-actions">
+        <button type="button" class="link-btn" id="tourSkip">Omitir</button>
+        <button type="button" class="btn-accent" id="tourNext">Siguiente</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="data_web/manifest.js?v=20261007f"></script>
+  <script src="assets/js/common.js?v=20261007f"></script>
+  <script src="assets/js/lidar3d.js?v=20261007f"></script>
+  <script src="assets/js/tour.js?v=20261007f"></script>
+  <script src="assets/js/explorador.js?v=20261007f"></script>
+</body>
+</html>
