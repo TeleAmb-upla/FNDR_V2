@@ -282,7 +282,8 @@
     const f = flight();
     const available = flightMissions(f);
     $('missionSeg').innerHTML = '';
-    MISSION_ORDER.forEach((ms) => {
+    const anywhere = new Set(state.m.flights.flatMap(flightMissions));
+    MISSION_ORDER.filter((ms) => anywhere.has(ms)).forEach((ms) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = ms === state.mission ? 'active' : '';
@@ -599,8 +600,8 @@
   function startTour() {
     if (window.innerWidth <= 900 && $('panel').classList.contains('collapsed')) $('panelCollapse').click();
     window.Tour.start([
-      { el: '#blockFlights', title: 'Elige un sector', text: 'Cada tarjeta es una campaña de dron en un sector. Las etiquetas indican qué tipos de vuelo tiene: multiespectral, térmico o LiDAR.' },
-      { el: '#blockMission', title: 'Tipo de vuelo', text: 'En un mismo sector puede haber vuelos multiespectrales, térmicos y LiDAR. Elige cuál quieres ver.' },
+      { el: '#blockFlights', title: 'Elige un sector', text: 'Cada tarjeta es una campaña de dron en un sector. Las etiquetas indican qué tipos de vuelo tiene: multiespectral o LiDAR.' },
+      { el: '#blockMission', title: 'Tipo de vuelo', text: 'En un mismo sector puede haber vuelos multiespectrales y LiDAR. Elige cuál quieres ver.' },
       { el: '#blockLayers', title: 'Cambia de capa', text: 'Cada tipo de vuelo tiene sus capas: RGB e índices espectrales, temperatura, o relieve y nube de puntos LiDAR en 3D.' },
       { el: '#legendRailRight', title: 'Transparencia', text: 'Con un índice activo, baja la opacidad para ver la foto RGB debajo y ubicarte mejor en el terreno.', before: () => { if (!isScalar(state.layer) && flight().layers.ndvi) selectLayer('ndvi'); } },
       { el: '#map', title: 'Consulta valores', text: 'Haz clic en cualquier punto del vuelo para ver el valor de cada capa en ese lugar.' },
