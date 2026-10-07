@@ -386,10 +386,14 @@
     return kinds.includes(last) ? last : kinds[0];
   }
 
-  function selectFlight(id, fit) {
+  function selectFlight(id, fit, keepLayer) {
     state.flightId = id;
     const f = flight();
     const missions = flightMissions(f);
+    if (!keepLayer) {
+      state.mission = missions.includes('multi') ? 'multi' : missions[0] || 'multi';
+      state.layer = missionKinds(f, state.mission)[0];
+    }
     if (!missions.includes(state.mission)) state.mission = missions[0] || 'multi';
     if (!f.layers[state.layer] || missionOf(state.layer) !== state.mission) state.layer = pickLayer(f, state.mission);
     document.querySelectorAll('.flight-card').forEach((b) => b.classList.toggle('active', b.dataset.id === id));
@@ -480,7 +484,7 @@
       state.layer = h.capa;
       state.mission = missionOf(h.capa);
     }
-    selectFlight(start, true);
+    selectFlight(start, true, !!(h.capa && flight(start).layers[h.capa]));
     loadComunas();
     setTimeout(() => map.invalidateSize(), 200);
     let seen = false;
