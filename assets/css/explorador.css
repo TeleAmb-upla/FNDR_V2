@@ -301,51 +301,6 @@
 .value-popup .v { font: 700 20px var(--nav-font); color: var(--accent-dark); }
 .value-popup small { color: #888; }
 
-/* ---------- Chart dock ---------- */
-.chart-dock {
-  position: absolute;
-  z-index: 560;
-  left: calc(var(--panel-w) + var(--gap) * 2);
-  right: var(--gap);
-  bottom: var(--gap);
-  transition: left 0.35s;
-  pointer-events: none;
-}
-.panel-collapsed .chart-dock { left: calc(46px + var(--gap) * 2); }
-.chart-dock__toggle {
-  pointer-events: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: 50%;
-  transform: translateX(-50%);
-  padding: 7px 18px;
-  border: 0;
-  border-radius: 50px 50px 0 0;
-  background: #fff;
-  color: var(--heading-color);
-  font: 600 13px var(--nav-font);
-  cursor: pointer;
-  box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.15);
-}
-.chart-dock__toggle i:first-child { color: var(--accent-color); }
-.chart-dock__toggle .chev { transition: transform 0.3s; }
-.chart-dock.open .chart-dock__toggle .chev { transform: rotate(180deg); }
-.chart-dock__body {
-  pointer-events: auto;
-  display: none;
-  background: #fff;
-  border-radius: 12px;
-  padding: 12px 16px 14px;
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.28);
-}
-.chart-dock.open .chart-dock__body { display: block; }
-.chart-dock__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.chart-sub { font-size: 12.5px; color: color-mix(in srgb, var(--default-color), transparent 25%); }
-.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
-.chart-card h4 { font-family: var(--nav-font); font-size: 13px; font-weight: 600; margin: 0 0 6px; }
-.chart-box { position: relative; height: 200px; }
-
 /* ---------- LiDAR 3D ---------- */
 .las3d { position: absolute; inset: 0; z-index: 400; background: radial-gradient(circle at 50% 40%, #2c3a32 0%, #141a16 75%); }
 .las3d[hidden] { display: none; }
@@ -437,9 +392,7 @@
   .legend-rail--left, .panel-collapsed .legend-rail--left { left: var(--gap); top: auto; bottom: 70px; transform: none; }
   .legend-rail--right { top: auto; bottom: 70px; transform: none; }
   .map-note { display: none; }
-  .map-tools, .panel-collapsed .map-tools { left: var(--gap); top: auto; bottom: var(--gap); }  .chart-dock, .panel-collapsed .chart-dock { left: var(--gap); }
-  .chart-grid { grid-template-columns: 1fr; }
-  .chart-box { height: 150px; }
+  .map-tools, .panel-collapsed .map-tools { left: var(--gap); top: auto; bottom: var(--gap); }
   .btn-tour span, .btn-tour { font-size: 0; padding: 8px 10px; }
   .btn-tour i { font-size: 16px; }
   .las3d-toolbar, .is-3d .las3d-toolbar { left: var(--gap); right: var(--gap); flex-wrap: wrap; border-radius: 12px; top: auto; bottom: 64px; }

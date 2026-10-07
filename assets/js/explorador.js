@@ -21,7 +21,6 @@
     mission: 'multi',
     layer: 'rgb',
     opacity: 1,
-    chartLayer: 'ndvi',
     lastLayer: {},
   };
 
@@ -29,8 +28,6 @@
   let baseLayers = {};
   let primaryGroup = null;
   let comunasLayer = null;
-  let histChart = null;
-  let flightsChart = null;
   const gridCache = new Map();
 
   const $ = (id) => document.getElementById(id);
@@ -51,8 +48,6 @@
       unit: l.unit || M.unit || '',
     };
   }
-
-  const flightShort = (f) => `${f.site_name} · ${f.date_label}`;
 
   /* ---------------- Map ---------------- */
 
@@ -406,7 +401,6 @@
     if (mission === state.mission) return;
     state.mission = mission;
     state.layer = pickLayer(flight(), mission);
-    if (isScalar(state.layer)) state.chartLayer = state.layer;
     applyLayer();
     fitFlight(flight());
   }
@@ -414,7 +408,6 @@
   function selectLayer(kind) {
     state.layer = kind;
     state.mission = missionOf(kind);
-    if (isScalar(kind)) state.chartLayer = kind;
     applyLayer();
   }
 
@@ -428,7 +421,6 @@
     renderPrimary();
     updateOpacityDock();
     updateNote();
-    renderCharts();
     writeHash();
     const lidar = state.layer === 'lidar';
     $('las3dView').hidden = !lidar;
@@ -438,153 +430,12 @@
     else window.Lidar3D.hide();
   }
 
-  /* ---------------- Charts ---------------- */
-
-  function parseGradient(css) {
-    const stops = [];
-    (css || '').replace(/rgb\((\d+),(\d+),(\d+)\)\s+([\d.]+)%/g, (_, r, g, b, p) => {
-      stops.push({ p: +p / 100, c: [+r, +g, +b] });
-      return '';
-    });
-    return (t) => {
-      if (!stops.length) return 'rgb(95,207,128)';
-      t = Math.max(0, Math.min(1, t));
-      let i = 1;
-      while (i < stops.length - 1 && stops[i].p < t) i++;
-      const a = stops[i - 1];
-      const b = stops[i];
-      const k = (t - a.p) / Math.max(b.p - a.p, 1e-9);
-      const c = a.c.map((v, j) => Math.round(v + (b.c[j] - v) * k));
-      return `rgb(${c[0]},${c[1]},${c[2]})`;
-    };
-  }
-
-  function fillChartLayerSelect() {
-    const kinds = state.m.layer_order.filter((k) => isScalar(k) && missionOf(k) === state.mission
-      && state.m.flights.some((f) => f.layers[k] && f.layers[k].stats));
-    $('chartLayer').innerHTML = kinds.map((k) => `<option value="${k}">${meta(k).label}</option>`).join('');
-    if (!kinds.includes(state.chartLayer)) state.chartLayer = kinds[0];
-    $('chartDock').hidden = !kinds.length;
-  }
-
-  function renderCharts() {
-    if (!window.Chart || !state.m) return;
-    fillChartLayerSelect();
-    const k = state.chartLayer;
-    if (!k) return;
-    $('chartLayer').value = k;
-    const M = meta(k);
-    const f = flight();
-    const lay = f.layers[k];
-    const R = layerRange(f, k);
-    const d = DIGITS[k] != null ? DIGITS[k] : 2;
-    const colorAt = parseGradient(M.legend_gradient);
-    $('chartSub').textContent = lay ? `${M.label} · ${flightShort(f)}` : `${M.label} no disponible para ${f.site_name}`;
-
-    Chart.defaults.font.family = '"Open Sans", sans-serif';
-    Chart.defaults.color = '#555';
-
-    const datasets = [];
-    let labels = [];
-    if (lay && lay.hist) {
-      const e = lay.hist.edges;
-      labels = lay.hist.pct.map((_, i) => fmt((e[i] + e[i + 1]) / 2, d));
-      datasets.push({
-        type: 'bar',
-        label: flightShort(f),
-        data: lay.hist.pct,
-        backgroundColor: lay.hist.pct.map((_, i) => colorAt((i + 0.5) / lay.hist.pct.length)),
-        borderWidth: 0,
-        barPercentage: 1,
-        categoryPercentage: 1,
-      });
-    }
-    if (histChart) histChart.destroy();
-    histChart = new Chart($('histChart'), {
-      data: { labels, datasets },
-      options: {
-        maintainAspectRatio: false,
-        animation: { duration: 250 },
-        plugins: {
-          legend: { display: datasets.length > 1, labels: { boxWidth: 12, font: { size: 11 } } },
-          tooltip: { callbacks: { title: (it) => `${M.label} ≈ ${it[0].label}`, label: (it) => `${it.dataset.label}: ${fmt(it.raw, 2)} %` } },
-        },
-        scales: {
-          x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 10.5 } }, title: { display: !!R.unit, text: R.unit } },
-          y: { beginAtZero: true, ticks: { font: { size: 10.5 }, callback: (v) => v + ' %' }, grid: { color: '#eef0ee' } },
-        },
-      },
-    });
-
-    const fl = state.m.flights.filter((x) => x.layers[k] && x.layers[k].stats);
-    const iqr = fl.map((x) => [x.layers[k].stats.p25, x.layers[k].stats.p75]);
-    const means = fl.map((x) => x.layers[k].stats.mean);
-    const tLabels = fl.map((x) => [x.site_name, x.date]);
-    if (flightsChart) flightsChart.destroy();
-    flightsChart = new Chart($('flightsChart'), {
-      data: {
-        labels: tLabels,
-        datasets: [
-          {
-            type: 'bar',
-            label: 'Rango intercuartil (P25–P75)',
-            data: iqr,
-            backgroundColor: fl.map((x) => (x.id === f.id ? 'rgba(95,207,128,0.85)' : 'rgba(95,207,128,0.35)')),
-            borderColor: '#3fb563',
-            borderWidth: fl.map((x) => (x.id === f.id ? 2 : 0)),
-            borderRadius: 4,
-            barPercentage: 0.55,
-          },
-          {
-            type: 'line',
-            label: 'Media',
-            data: means,
-            borderColor: '#37423b',
-            backgroundColor: '#37423b',
-            showLine: false,
-            pointRadius: 5,
-            pointHoverRadius: 7,
-          },
-        ],
-      },
-      options: {
-        maintainAspectRatio: false,
-        animation: { duration: 250 },
-        onClick: (_, els) => { if (els.length) selectFlight(fl[els[0].index].id, true); },
-        plugins: {
-          legend: { labels: { boxWidth: 12, font: { size: 11 } } },
-          tooltip: {
-            callbacks: {
-              title: (it) => flightShort(fl[it[0].dataIndex]),
-              label: (it) => {
-                const x = fl[it.dataIndex];
-                const s = x.layers[k].stats;
-                return it.datasetIndex === 0
-                  ? `P25–P75: ${fmtVal(k, s.p25, x)} – ${fmtVal(k, s.p75, x)}`
-                  : `Media: ${fmtVal(k, s.mean, x)} · Mediana: ${fmtVal(k, s.median, x)}`;
-              },
-            },
-          },
-        },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 10.5 } } },
-          y: { ticks: { font: { size: 10.5 } }, grid: { color: '#eef0ee' } },
-        },
-      },
-    });
-  }
-
   /* ---------------- Boot ---------------- */
 
   function bindUi() {
     $('opacity').addEventListener('input', (e) => setOpacity(+e.target.value / 100));
     document.querySelectorAll('#basemapSeg button').forEach((b) => b.addEventListener('click', () => setBasemap(b.dataset.base)));
     $('btnComunas').addEventListener('click', toggleComunas);
-    $('chartLayer').addEventListener('change', (e) => { state.chartLayer = e.target.value; renderCharts(); });
-    $('chartToggle').addEventListener('click', () => {
-      $('chartDock').classList.toggle('open');
-      renderCharts();
-    });
     $('panelCollapse').addEventListener('click', () => {
       $('panel').classList.toggle('collapsed');
       $('app').classList.toggle('panel-collapsed', $('panel').classList.contains('collapsed'));
@@ -606,7 +457,6 @@
       { el: '#legendRailRight', title: 'Transparencia', text: 'Con un índice activo, baja la opacidad para ver la foto RGB debajo y ubicarte mejor en el terreno.', before: () => { if (!isScalar(state.layer) && flight().layers.ndvi) selectLayer('ndvi'); } },
       { el: '#map', title: 'Consulta valores', text: 'Haz clic en cualquier punto del vuelo para ver el valor de cada capa en ese lugar.' },
       { el: '#mapTools', title: 'Mapa base', text: 'Cambia entre mapa satelital y topográfico, y muestra u oculta los límites comunales.' },
-      { el: '#chartToggle', title: 'Gráficos', text: 'Abre el panel inferior para ver la distribución de valores y la media de cada vuelo.' },
     ]);
     try { localStorage.setItem('fndr_tour_seen', '1'); } catch (e) { /* noop */ }
   }
@@ -630,7 +480,6 @@
       state.layer = h.capa;
       state.mission = missionOf(h.capa);
     }
-    if (isScalar(state.layer)) state.chartLayer = state.layer;
     selectFlight(start, true);
     loadComunas();
     setTimeout(() => map.invalidateSize(), 200);
